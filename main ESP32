@@ -1,0 +1,143 @@
+//Incluir librerías de arduino, Slave para el ESP32 y Wire para comunicación I2C
+#include <Arduino.h>
+#include <ESP32SPISlave.h>
+#include "Wire.h"
+
+//Definir la dirrección del SLAVE
+#define I2C_DEV_ADDR 0x55
+
+//Definri pines del LED
+#define LED1 14
+#define LED2 26
+#define LED3 33
+
+//Definir el potenciómetro
+#define Pot1 15
+
+//Funciones para la comunicación I2C
+void onRequest();
+void onReceive(int len);
+
+//Vriables globales para la comunicación I2C, el voltaje, el Led que se utiliza y el tiempo de encendido
+uint8_t i = 0;
+int Voltaje = 0;
+int led=0;
+int tiempo=0;
+
+//Objeto para la comunicación SPI
+char cmd;
+
+//Definición de funciones
+void EncenderLED(const char* cmd); //Definición de la función para encender el LED
+String ExtraerBuffer(uint8_t*, int); //Función para extraer los valores de Led y tiempo para la comunicación SPI
+
+#define QUEUE_SIZE 1 //Tamaño de cola para la comunicación SPI
+
+ESP32SPISlave slave; //Objeto utilizado para la comunicación SPI
+
+
+//Definición y tamaño de los buffers para la comunicación SPI
+static constexpr uint32_t BUFFER_SIZE {12};
+uint8_t spi_slave_tx_buf[BUFFER_SIZE]{1,2,3,4,5,6,7,8,9,10,11,12};
+uint8_t spi_slave_rx_buf[BUFFER_SIZE]{0,0,0,0,0,0,0,0,0,0,0,0};
+
+void setup () {
+
+  //Definición de Pines
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(Pot1, INPUT);
+
+  //Colocar los pines de LEDs en bajo al principio del programa
+  digitalWrite(LED1, LOW);
+  digitalWrite(LED2, LOW);
+  digitalWrite(LED3, LOW);
+
+  //Definiciones par ala comunicación I2C
+  Wire.onReceive(onReceive);
+  Wire.onRequest(onRequest);
+  Wire.begin((uint8_t)I2C_DEV_ADDR);
+
+  //Comenzar la comunicación con el monitor Serial
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+
+  //Definicioes de pines y tamaño de cola para la comunicación SPI
+  slave.setDataMode(SPI_MODE0);
+  slave.setQueueSize(QUEUE_SIZE);
+  slave.begin(VSPI);
+
+  //Limpia los buffers dejandolos en  blanco
+  memset(spi_slave_tx_buf, 0, BUFFER_SIZE);
+  memset(spi_slave_rx_buf, 0, BUFFER_SIZE);
+}
+
+void loop() {
+  //If para la comunicación SPI, comienza la comunicación
+  if (slave.hasTransactionsCompletedAndAllResultsHandled()) {
+        slave.queue(NULL, spi_slave_rx_buf, BUFFER_SIZE);
+        delay(5);
+        slave.trigger();
+  }
+  //Otro if, sucede cuando comienza la comunicación
+  if (slave.hasTransactionsCompletedAndAllResultsReady(QUEUE_SIZE)) {
+    const std::vector<size_t> received_bytes = slave.numBytesReceivedAll(); //Recibe todos los bits que vienen del núcleo y los guarda en el vector
+    String command = ExtraerBuffer(spi_slave_rx_buf, received_bytes[0]); //Llama a la función para extraer el número de LED y tiempo
+    EncenderLED(command.c_str()); //Llama a la función para imprimir el LED y tiempo pedido
+    memset(spi_slave_tx_buf, 0, BUFFER_SIZE); //Limpia los dos buffers
+    memset(spi_slave_rx_buf, 0, BUFFER_SIZE);
+  }
+}
+
+//Función para la comunicación I2C para mandar el dato del potenciómetro
+void onRequest() {
+  Voltaje = (analogRead(Pot1));
+  Serial.println(Voltaje);
+  Wire.print(Voltaje);
+}
+
+//Función para la comunicación I2C, únicamente comienza la comunicación
+void onReceive (int len) {
+  while (Wire.available())
+  {
+    uint8_t ByteRecibido = Wire.read();
+  }
+}
+
+//Función para encender los LEDs de la comunicación SPI
+void EncenderLED(const char* cmd) {
+  led = cmd[0]-'0'; // Extrae el LED
+  tiempo = atoi(cmd + 1); // Extrae el tiempo
+  Serial.print("LED: "); //Muestra en el monitor Serial el LED y tiempo que recibió 
+  Serial.println(led);
+  Serial.print("Tiempo: ");
+  Serial.println(tiempo);
+  switch (led) //Switch case para el LED que recibe por la comunicación
+  {
+  case 1:
+    digitalWrite(LED1, HIGH); //Coloca el LED1 en HIGH
+    delay(tiempo); //Delay para esperar el tiempo obtenido en la comunicacíón
+    digitalWrite(LED1, LOW); //Regresa el Pin a LOW luego de que termina el tiempo
+    break;
+  case 2: //El encendido y apagado del LED2 funciona igual para el LED1
+    digitalWrite(LED2, HIGH);
+    delay(tiempo);
+    digitalWrite(LED2, LOW);
+    break;
+  case 3: //El encendido y apagado del LED3 funciona igual para el LED1
+    digitalWrite(LED3, HIGH);
+    delay(tiempo);
+    digitalWrite(LED3, LOW);
+    break;
+  }
+}
+
+//Función para extraer el buffer y pasarlo a un string
+String ExtraerBuffer(uint8_t* buffer, int bufferSize) {
+  String orden = ""; //Crea la variable orden que está vacía donde se guardan los datos recibidos
+  for (int i = 0; i < bufferSize; i++) {
+    orden += (char)buffer[i]; // Convierte cada byte a char
+  }
+  return orden;
+}
