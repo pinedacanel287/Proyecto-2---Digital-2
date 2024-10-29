@@ -21,10 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include "stdio.h"
+#include <string.h> //Librería usada para usar strlen
+#include <stdlib.h> //Librería para usar sizeof
+#include <stdbool.h> //Librería para manejar valores booleanos
+#include "stdio.h" //Librería usada para agregar el NULL
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DeviceAddress 0x55
+#define DeviceAddress 0x55 //Dirrección para la comunicación I2C
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,13 +50,13 @@ SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t I2C_TX_BUFFER [] = "2";
+uint8_t I2C_TX_BUFFER [] = "2"; //Variables de buffers
 uint8_t I2C_RX_BUFFER[4];
 char SPI_buffer[9];
-uint8_t idx = 0;
-int LED, t_LED;
 char LED_SPI[2];
 char TIEMPO_SPI[8];
+uint8_t idx = 0; //Variable para controlar el indice en la comunicación I2C
+int LED, t_LED; //Variables para guardar el LED y tiempo ingresados
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,11 +66,11 @@ static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
-void UART_SendString(const char *str);
-void ShowMenu(void);
-void HandleOption(char option);
-bool ValidInput(char *input);
-void SPI_cmd(int LED,  int t_LED);
+void UART_SendString(const char *str); //Función para mostrar un string por UART
+void ShowMenu(void); //Función para mostrar únicamente el menú
+void HandleOption(char option); //Función que recibe la opción seleccionada y realiza lo deseado por el usuario
+bool ValidInput(char *input); //Verifica que el input para la opción 1 es valido
+void SPI_cmd(int LED,  int t_LED); //Envia los datos del input, ya verificados, por comunicación SPI
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
